@@ -1,5 +1,9 @@
 {
   "name": "static.simple",
   "main": "static.js",
-  "version" : "0.0.1"
+  "version" : "0.0.1",
+  "readmeFilename": "Readme.md",
+  "homepage": "https://github.com/rafaelcastrocouto/static.simple",
+  "license": "GPL",
+  "description": "Simple static file server"
 }
