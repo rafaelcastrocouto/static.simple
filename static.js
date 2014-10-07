@@ -148,18 +148,22 @@ exports.read = function(response, file, type){
   if(file[0] == '/') file = file.slice(1);
   fs.stat(file, function(err, stat){
     if(err) response.end('Error 404');
-    fs.readFile(file, function (err, content) {
-      if(err) response.end('Error 404');
-      var lastModified = new Date(stat.mtime);
-      var fileExtension = path.extname(file).slice(1).toLowerCase();
-      response.writeHead(200, {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Security-Policy': '*',
-        'Cache-Control': 'public, max-age=31536000',
-        'Last-Modified': lastModified.toUTCString(),
-        'Content-type': type || contentTypes[fileExtension] || 'text/plain'
+    else {
+      fs.readFile(file, function (err, content) {
+        if(err) response.end('Error 404');
+        else {
+          var lastModified = new Date(stat.mtime);
+          var fileExtension = path.extname(file).slice(1).toLowerCase();
+          response.writeHead(200, {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Security-Policy': '*',
+            'Cache-Control': 'public, max-age=31536000',
+            'Last-Modified': lastModified.toUTCString(),
+            'Content-type': type || contentTypes[fileExtension] || 'text/plain'
+          });
+          response.end(content);
+        }
       });
-      response.end(content);
-    });
+    }
   });
 };
