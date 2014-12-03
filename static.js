@@ -3,6 +3,7 @@
 /*global console */
 
 var path = require('path'),
+  zlib = require('zlib'),
   fs = require('fs'),
   contentTypes = {
     "aiff"    : "audio/x-aiff",
@@ -148,19 +149,64 @@ var path = require('path'),
     "xyz"     : "chemical/x-pdb",
     "zip"     : "application/zip"
   },
-  read = function(response, file, type){
-    if(file[0] === '/') { file = file.slice(1); }
-    fs.readFile(file, function (err, content) {
-      if(err) {
-        read(response, '404.html');
-      } else {
-        var fileExtension = path.extname(file).slice(1).toLowerCase();
-        response.writeHead(200, {
-          'Cache-Control': 'public, max-age=31536000',
-          'Content-type': type || contentTypes[fileExtension] || 'text/plain'
-        });
-        response.end(content);
-      }
+  cache = {},
+
+  sendRaw = function(response, content, type){
+    response.writeHead(200, {
+      'Cache-Control': 'public, max-age=31536000',
+      'Content-Type': type
     });
+    response.end(content);
+  },
+
+  sendZip = function(response, content, type){
+    response.writeHead(200, {
+      'Content-Encoding': 'gzip',
+      'Cache-Control': 'public, max-age=31536000',
+      'Content-Type': type
+    });
+    response.end(content);
+  },
+
+  error = function(response){
+    readCache(response, '404.html', 'text/html');
+  },
+
+  readCache = function(response, file, type, zip){
+    if(cache[file]) {
+      if (zip) {
+        sendZip(response, cache[file], type);
+      } else {
+        sendRaw(response, cache[file], type);
+      }
+    } else {
+      fs.readFile(file, function (err, content) {
+        if(err) {
+          error(response);
+        } else {
+          if (zip) {
+            zlib.gzip(new Buffer(content), function(err, data){
+              if(err) {
+                error(response);
+              } else {
+                cache[file] = data;
+                sendZip(response, data, type);
+              }
+            });
+          } else {
+            cache[file] = content;
+            sendRaw(response, content, type);
+          }
+        }
+      });
+    }
+  },
+
+  read = function(request, response, file){
+    if(file[0] === '/') { file = file.slice(1); }
+    var type = contentTypes[path.extname(file).slice(1).toLowerCase()] || 'text/plain';
+    var encoding = request.headers['accept-encoding'] || '';
+    var zip = encoding.match(/\bgzip\b/);
+    readCache(response, file, type, zip);
   };
 exports.read = read;
